@@ -7,12 +7,8 @@ use chat_common::messages::{
 use chat_common::packet_handling::{CommandHandler, PacketHandler};
 use common::slc_commands::{ServerCommand, ServerEvent};
 use crossbeam::channel::Sender;
-use itertools::Itertools;
-use rand::prelude::ThreadRng;
 use rand::{rng, RngCore};
 use std::collections::{HashMap, HashSet};
-use std::sync::mpsc::channel;
-use std::time::SystemTime;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{NodeType, Packet};
 
@@ -85,10 +81,10 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         ));
                         self.channel_info
                             .get_mut(&0x1)
-                            .and_then(|(_, clients)| Some(clients.insert(cli_node_id)));
-                        self.channels.insert((cli_node_id as u64) << 32 | 0x8, req);
+                            .map(|(_, clients)| clients.insert(cli_node_id));
+                        self.channels.insert(u64::from(cli_node_id) << 32 | 0x8, req);
                         self.channel_info.insert(
-                            (cli_node_id as u64) << 32 | 0x8,
+                            u64::from(cli_node_id) << 32 | 0x8,
                             (false, map_macro::hash_set! {cli_node_id}),
                         );
                     }
@@ -98,7 +94,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         val.1.retain(|&x| x != cli_node_id);
                     }
                     self.channels
-                        .remove_by_left(&((cli_node_id as u64) << 32 | 0x8));
+                        .remove_by_left(&(u64::from(cli_node_id) << 32 | 0x8));
                     self.usernames.remove_by_left(&cli_node_id);
                     replies.extend_from_slice(self.generate_channel_updates().as_slice());
                 }
@@ -119,16 +115,16 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         self.channels.get_by_right(&data.channel_name),
                         self.channels
                             .get_by_right(&data.channel_name)
-                            .and_then(|id| self.channel_info.get_mut(&id)),
+                            .and_then(|id| self.channel_info.get_mut(id)),
                     ) {
                         channelinfo = data;
                         channel_id = *id;
                     } else if !data.channel_name.is_empty() {
-                        let mut id = rng().next_u64() & 0xFFFFFFFFFFFFFFF0 | 0x2;
+                        let mut id = rng().next_u64() & 0xFFFF_FFFF_FFFF_FFF0 | 0x2;
                         while self.channels.contains_left(&id)
                             || self.channel_info.contains_key(&id)
                         {
-                            id = rng().next_u64() & 0xFFFFFFFFFFFFFFF0 | 0x2;
+                            id = rng().next_u64() & 0xFFFF_FFFF_FFFF_FFF0 | 0x2;
                         }
                         self.channels.insert(id, data.channel_name.clone());
                         self.channel_info.insert(id, (true, HashSet::new()));
@@ -148,7 +144,18 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         ));
                         return (replies, vec![]);
                     }
-                    if !channelinfo.1.contains(&cli_node_id) {
+                    if channelinfo.1.contains(&cli_node_id) {
+                        replies.push((
+                            cli_node_id,
+                            ChatMessage {
+                                own_id: self.own_id.into(),
+                                message_kind: Some(MessageKind::Err(ErrorMessage {
+                                    error_type: "CHANNEL_ALREADY_JOINED".to_string(),
+                                    error_message: "Channel was already joined!".to_string(),
+                                })),
+                            },
+                        ));
+                    } else {
                         channelinfo.1.insert(cli_node_id);
                         replies.push((
                             cli_node_id,
@@ -160,17 +167,6 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             },
                         ));
                         replies.extend_from_slice(self.generate_channel_updates().as_slice());
-                    } else {
-                        replies.push((
-                            cli_node_id,
-                            ChatMessage {
-                                own_id: self.own_id.into(),
-                                message_kind: Some(MessageKind::Err(ErrorMessage {
-                                    error_type: "CHANNEL_ALREADY_JOINED".to_string(),
-                                    error_message: "Channel was already joined!".to_string(),
-                                })),
-                            },
-                        ));
                     }
                 }
                 MessageKind::CliLeave(..) => {
@@ -185,11 +181,11 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         self.usernames.get_by_left(&cli_node_id),
                     ) {
                         (Some(channel_data), Some(username)) => {
-                            for id in channel_data.1.iter() {
+                            for id in &channel_data.1 {
                                 replies.push((
                                     *id,
                                     ChatMessage {
-                                        own_id: self.own_id as u32,
+                                        own_id: u32::from(self.own_id),
                                         message_kind: Some(MessageKind::SrvDistributeMessage(
                                             MessageData {
                                                 username: username.clone(),
@@ -200,7 +196,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                             },
                                         )),
                                     },
-                                ))
+                                ));
                             }
                         }
                         (None, Some(_)) => {
@@ -237,9 +233,9 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                     replies.push((
                         message.own_id as NodeId,
                         ChatMessage {
-                            own_id: self.own_id as u32,
+                            own_id: u32::from(self.own_id),
                             message_kind: Some(MessageKind::DsvRes(DiscoveryResponse {
-                                server_id: self.own_id as u32,
+                                server_id: u32::from(self.own_id),
                                 server_type: "chat".to_string(),
                             })),
                         },
@@ -249,10 +245,10 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                     replies.push((
                         message.own_id as NodeId,
                         ChatMessage {
-                            own_id: self.own_id as u32,
+                            own_id: u32::from(self.own_id),
                             message_kind: Some(MessageKind::Err(ErrorMessage {
                                 error_type: "INVALID_CLI_MESSAGE".to_string(),
-                                error_message: format!("Invalid message: {:?}", kind),
+                                error_message: format!("Invalid message: {kind:?}"),
                             })),
                         },
                     ));
@@ -300,9 +296,9 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
     {
         ChatServerInternal {
             own_id: id,
-            channels: Default::default(),
-            channel_info: Default::default(),
-            usernames: Default::default(),
+            channels: BiHashMap::default(),
+            channel_info: HashMap::default(),
+            usernames: BiHashMap::default(),
         }
     }
 }
@@ -313,14 +309,14 @@ impl ChatServerInternal {
     fn generate_channel_updates(&mut self) -> Vec<(NodeId, ChatMessage)> {
         let mut updates = vec![];
         let mut channel_list = vec![];
-        for (id, name) in self.channels.iter() {
-            if let Some((is_group, clients)) = self.channel_info.get(&id) {
+        for (id, name) in &self.channels {
+            if let Some((is_group, clients)) = self.channel_info.get(id) {
                 let mut clients_res = vec![];
                 for x in clients {
                     if let Some(name) = self.usernames.get_by_left(x) {
                         clients_res.push(ClientData {
                             username: name.clone(),
-                            id: *x as u64,
+                            id: u64::from(*x),
                         });
                     }
                 }
@@ -336,7 +332,7 @@ impl ChatServerInternal {
             updates.push((
                 *id,
                 ChatMessage {
-                    own_id: self.own_id as u32,
+                    own_id: u32::from(self.own_id),
                     message_kind: Some(MessageKind::SrvReturnChannels(ChannelsList {
                         channels: channel_list.clone(),
                     })),

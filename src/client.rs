@@ -39,7 +39,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
             match kind {
                 MessageKind::SrvConfirmReg(reg) => {
                     match (self.currently_connected_server, reg.successful) {
-                        (Some(server_id), true) if message.own_id == server_id as u32 => {
+                        (Some(server_id), true) if message.own_id == u32::from(server_id) => {
                             self.server_usernames.insert(server_id, reg.username);
                         }
                         (Some(_), true) => {
@@ -60,7 +60,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
                     }
                 }
                 MessageKind::SrvReturnChannels(channels) => match self.currently_connected_server {
-                    Some(server_id) if message.own_id == server_id as u32 => {
+                    Some(server_id) if message.own_id == u32::from(server_id) => {
                         self.channels_list = channels.channels;
                     }
                     Some(_) => {
@@ -113,6 +113,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
                     )));
                 }
                 MessageKind::DsvRes(res) => {
+                    #[allow(clippy::cast_possible_truncation)]
                     self.discovered_servers
                         .push((res.server_id as NodeId, res.server_type));
                 }
@@ -120,13 +121,14 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
                     self.currently_connected_channel = Some(chan);
                 }
                 _ => {
+                    #[allow(clippy::cast_possible_truncation)]
                     replies.push((
                         message.own_id as NodeId,
                         ChatMessage {
-                            own_id: self.own_id as u32,
+                            own_id: u32::from(self.own_id),
                             message_kind: Some(MessageKind::Err(ErrorMessage {
                                 error_type: "INVALID_SRV_MESSAGE".to_string(),
-                                error_message: format!("Invalid message: {:?}", kind),
+                                error_message: format!("Invalid message: {kind:?}"),
                             })),
                         },
                     ));
@@ -175,7 +177,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
                 (None, vec![], vec![ChatClientEvent::ServersTypes(map)])
             }
             ChatClientCommand::SendMessage(m) => {
-                let x = self.handle_message(m);
+                let x = self.handle_message(m.as_str());
                 (None, x.0, x.1)
             }
         }
@@ -189,7 +191,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
             Some((
                 id,
                 ChatMessage {
-                    own_id: self.own_id as u32,
+                    own_id:  u32::from(self.own_id),
                     message_kind: Some(MessageKind::DsvReq("chat".to_string())),
                 },
             ))
@@ -202,13 +204,13 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
     {
         ChatClientInternal {
             discovered_servers: vec![],
-            discovered_nodes: Default::default(),
+            discovered_nodes: HashSet::default(),
             currently_connected_server: None,
             currently_connected_channel: None,
-            server_usernames: Default::default(),
+            server_usernames: HashMap::default(),
             channels_list: vec![],
             own_id: id,
-            own_channel_id: (id as u64) << 32 | 0x8,
+            own_channel_id: u64::from(id) << 32 | 0x8,
         }
     }
 }
@@ -216,7 +218,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
 impl ChatClientInternal {
     fn handle_message(
         &mut self,
-        message: String,
+        message: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
         if message.starts_with('/') {
             let (cmd, remainder) = message.split_once(' ').unwrap_or(("", ""));
@@ -230,7 +232,7 @@ impl ChatClientInternal {
                     vec![(
                         connected_server,
                         ChatMessage {
-                            own_id: self.own_id as u32,
+                            own_id: u32::from(self.own_id),
                             message_kind: Some(MessageKind::SendMsg(
                                 chat_common::messages::SendMessage {
                                     message: message.to_string(),
@@ -289,10 +291,7 @@ impl ChatClientInternal {
                     .join(", ");
                 (
                     vec![],
-                    vec![ChatClientEvent::MessageReceived(format!(
-                        "[SYSTEM] Available servers: {}",
-                        servers_list
-                    ))],
+                    vec![ChatClientEvent::MessageReceived(format!("[SYSTEM] Available servers: {servers_list}"))],
                 )
             }
             "connect" => {
@@ -311,13 +310,12 @@ impl ChatClientInternal {
                             vec![(
                                 *id,
                                 ChatMessage {
-                                    own_id: self.own_id as u32,
+                                    own_id: u32::from(self.own_id),
                                     message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
                                 },
                             )],
                             vec![ChatClientEvent::MessageReceived(format!(
-                                "[SYSTEM] Connecting to server {}",
-                                id
+                                "[SYSTEM] Connecting to server {id}"
                             ))],
                         )
                     }
@@ -343,24 +341,21 @@ impl ChatClientInternal {
                         Some(prev) => (
                             vec![],
                             vec![ChatClientEvent::MessageReceived(format!(
-                                "[SYSTEM] Error: Already registered with username {}",
-                                prev
+                                "[SYSTEM] Error: Already registered with username {prev}"
                             ))],
                         ),
                         None => (
                             vec![(
                                 server_id,
                                 ChatMessage {
-                                    own_id: self.own_id as u32,
+                                    own_id: u32::from(self.own_id),
                                     message_kind: Some(MessageKind::CliRegisterRequest(
                                         arg.to_string(),
                                     )),
                                 },
                             )],
                             vec![ChatClientEvent::MessageReceived(format!(
-                                "[SYSTEM] Registering with username {}",
-                                arg
-                            ))],
+                                "[SYSTEM] Registering with username {arg}"))],
                         ),
                     }
                 } else {
@@ -379,7 +374,7 @@ impl ChatClientInternal {
                             vec![(
                                 server_id,
                                 ChatMessage {
-                                    own_id: self.own_id as u32,
+                                    own_id: u32::from(self.own_id),
                                     message_kind: Some(MessageKind::CliCancelReg(Empty {})),
                                 },
                             )],
@@ -415,15 +410,14 @@ impl ChatClientInternal {
                         .channels_list
                         .iter()
                         .find(|x| x.channel_id == 0x1)
-                        .map_or("".to_string(), |x| {
+                        .map_or(String::new(), |x| {
                             x.connected_clients
                                 .iter()
                                 .map(|x| format!("@{}", x.username))
                                 .join(",")
                         });
                     let msg = format!(
-                        "[SYSTEM] Available channels: {}\n[SYSTEM] Available IMs: {}",
-                        chan_list, user_list
+                        "[SYSTEM] Available channels: {chan_list}\n[SYSTEM] Available IMs: {user_list}"
                     );
                     (vec![], vec![ChatClientEvent::MessageReceived(msg)])
                 } else {
@@ -453,11 +447,11 @@ impl ChatClientInternal {
                     (Some(server_id), Some(channel)) =>
                         (
                             vec![(server_id, ChatMessage{
-                                own_id: self.own_id as u32,
+                                own_id: u32::from(self.own_id),
                                 message_kind: Some(MessageKind::CliJoin(
                                     JoinChannel {
                                         channel_id: Some(channel.channel_id),
-                                        channel_name: "".to_string(),
+                                        channel_name: String::new(),
                                     }
                                 )
                             )})
@@ -468,7 +462,7 @@ impl ChatClientInternal {
                         ),
                     (Some(server_id), None) => (
                             vec![(server_id, ChatMessage{
-                                own_id: self.own_id as u32,
+                                own_id: u32::from(self.own_id),
                                 message_kind: Some(MessageKind::CliJoin(
                                     JoinChannel {
                                         channel_id: None,
@@ -524,7 +518,7 @@ impl ChatClientInternal {
                                     vec![(
                                         server_id,
                                         ChatMessage {
-                                            own_id: self.own_id as u32,
+                                            own_id: u32::from(self.own_id),
                                             message_kind: Some(MessageKind::SendMsg(
                                                 chat_common::messages::SendMessage {
                                                     message: freeform.to_string(),
@@ -571,8 +565,7 @@ impl ChatClientInternal {
             _ => (
                 vec![],
                 vec![ChatClientEvent::MessageReceived(format!(
-                    "[SYSTEM] Unknown command {}. Use /help to list available commands.",
-                    command
+                    "[SYSTEM] Unknown command {command}. Use /help to list available commands."
                 ))],
             ),
         }
@@ -581,7 +574,7 @@ impl ChatClientInternal {
 
 pub type ChatClient = PacketHandler<ChatClientCommand, ChatClientEvent, ChatClientInternal>;
 
-const HELP_MESSAGE: &str = r#"
+const HELP_MESSAGE: &str = r"
 [SYSTEM] Commands:
 [SYSTEM]    /help - Display this message
 [SYSTEM]    /servers - Lists discovered servers
@@ -592,4 +585,4 @@ const HELP_MESSAGE: &str = r#"
 [SYSTEM]    /join <channel> - Join a channel. You can only be in one channel at a time.
 [SYSTEM]    /leave <channel> - Leave the current channel. You will still receive DMs and system communications.
 [SYSTEM]    /msg <user> <text> - Send a direct message to a user.
-"#;
+";
