@@ -4,8 +4,8 @@ use chat_common::packet_handling::{CommandHandler, PacketHandler};
 use common::slc_commands::{ChatClientCommand, ChatClientEvent, ServerType};
 use crossbeam::channel::Sender;
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
 use log::{info, trace};
+use std::collections::{HashMap, HashSet};
 use wg_2024::network::NodeId;
 use wg_2024::packet::{NodeType, Packet};
 
@@ -355,22 +355,25 @@ impl ChatClientInternal {
                             ))],
                         ),
                         None => (
-                            vec![(
-                                server_id,
-                                ChatMessage {
-                                    own_id: u32::from(self.own_id),
-                                    message_kind: Some(MessageKind::CliRegisterRequest(
-                                        arg.to_string(),
-                                    )),
-                                },
-                            ),
-                            (
-                                server_id,
-                                ChatMessage {
-                                    own_id: u32::from(self.own_id),
-                                    message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
-                                },
-                            )
+                            vec![
+                                (
+                                    server_id,
+                                    ChatMessage {
+                                        own_id: u32::from(self.own_id),
+                                        message_kind: Some(MessageKind::CliRegisterRequest(
+                                            arg.to_string(),
+                                        )),
+                                    },
+                                ),
+                                (
+                                    server_id,
+                                    ChatMessage {
+                                        own_id: u32::from(self.own_id),
+                                        message_kind: Some(MessageKind::CliRequestChannels(
+                                            Empty {},
+                                        )),
+                                    },
+                                ),
                             ],
                             vec![ChatClientEvent::MessageReceived(format!(
                                 "[SYSTEM] Registering with username {arg}"
@@ -438,15 +441,16 @@ impl ChatClientInternal {
                     let msg = format!(
                         "[SYSTEM] Available channels: {chan_list}\n[SYSTEM] Available IMs: {user_list}"
                     );
-                    (vec![
-                        (
-                                server_id,
-                                ChatMessage {
-                                    own_id: u32::from(self.own_id),
-                                    message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
-                                },
-                            )
-                    ], vec![ChatClientEvent::MessageReceived(msg)])
+                    (
+                        vec![(
+                            server_id,
+                            ChatMessage {
+                                own_id: u32::from(self.own_id),
+                                message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
+                            },
+                        )],
+                        vec![ChatClientEvent::MessageReceived(msg)],
+                    )
                 } else {
                     (
                         vec![],
@@ -468,9 +472,9 @@ impl ChatClientInternal {
                 } else {
                     match (
                     self.currently_connected_server,
-                    self.channels_list.iter().find(|x| arg == x.channel_name),
+                    self.channels_list.iter().find(|x| arg == x.channel_name)
                 ) {
-                    (Some(server_id), Some(channel)) =>
+                        (Some(server_id), Some(channel)) =>
                         (
                             vec![(server_id, ChatMessage{
                                 own_id: u32::from(self.own_id),
@@ -486,7 +490,7 @@ impl ChatClientInternal {
                                 "[SYSTEM] Joining channel...".to_string(),
                             )],
                         ),
-                    (Some(server_id), None) => (
+                        (Some(server_id), None) => (
                             vec![(server_id, ChatMessage{
                                 own_id: u32::from(self.own_id),
                                 message_kind: Some(MessageKind::CliJoin(
