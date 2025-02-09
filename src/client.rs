@@ -550,7 +550,7 @@ impl ChatClientInternal {
                                             message_kind: Some(MessageKind::SendMsg(
                                                 chat_common::messages::SendMessage {
                                                     message: freeform.to_string(),
-                                                    channel_id: dst_id.id,
+                                                    channel_id: dst_id.id << 32 | 0x8,
                                                 },
                                             )),
                                         },
@@ -589,10 +589,6 @@ impl ChatClientInternal {
                     )],
                     )
                 }
-            }
-            "state" => {
-                info!(target: format!("Client {}", self.own_id).as_str(), "State: {:?}", self);
-                (vec![], vec![])
             }
             _ => (
                 vec![],

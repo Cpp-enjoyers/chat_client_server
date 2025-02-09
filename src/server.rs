@@ -234,7 +234,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 ));
                             }
                         }
-                        (None, Some(_)) => {
+                        (_, None) => {
                             info!(target: format!("Server {}", self.own_id).as_str(), "Client {cli_node_id} is not registered");
                             replies.push((
                                 cli_node_id,
@@ -248,7 +248,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 },
                             ));
                         }
-                        (_, None) => {
+                        (None, Some(_)) => {
                             info!(target: format!("Server {}", self.own_id).as_str(), "Channel doesn't exist");
                             replies.push((
                                 cli_node_id,
