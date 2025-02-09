@@ -88,7 +88,6 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 )),
                             },
                         ));
-                        info!(target: format!("Server {}", self.own_id).as_str(), "Sending back replies: {replies:?}");
                         info!(target: format!("Server {}", self.own_id).as_str(), "Sending channel updates");
                         self.channel_info
                             .get_mut(&0x1)
@@ -102,6 +101,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                     }
                 }
                 MessageKind::CliCancelReg(..) => {
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Received cancel registration request");
                     for val in self.channel_info.values_mut() {
                         val.1.retain(|&x| x != cli_node_id);
                     }
@@ -111,9 +111,11 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                     replies.extend_from_slice(self.generate_channel_updates().as_slice());
                 }
                 MessageKind::CliRequestChannels(..) => {
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Received channel request");
                     replies.extend_from_slice(self.generate_channel_updates().as_slice());
                 }
                 MessageKind::CliJoin(data) => {
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Received join request: {data:?}");
                     let channelinfo;
                     let channel_id;
                     if let (Some(id), Some(data)) = (
@@ -121,16 +123,18 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         data.channel_id
                             .and_then(|id| self.channel_info.get_mut(&id)),
                     ) {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Joining channel by ID {id}");
                         channelinfo = data;
                         channel_id = id;
-                    } else if let (Some(id), Some(data)) = (
+                    } else if let (Some(id), Some(cdata)) = (
                         self.channels.get_by_right(&data.channel_name),
                         self.channels
                             .get_by_right(&data.channel_name)
                             .and_then(|id| self.channel_info.get_mut(id)),
                     ) {
-                        channelinfo = data;
+                        channelinfo = cdata;
                         channel_id = *id;
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Joining channel by name {}({id})",data.channel_name);
                     } else if !data.channel_name.is_empty() {
                         let mut id = rng().next_u64() & 0xFFFF_FFFF_FFFF_FFF0 | 0x2;
                         while self.channels.contains_left(&id)
@@ -138,11 +142,19 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         {
                             id = rng().next_u64() & 0xFFFF_FFFF_FFFF_FFF0 | 0x2;
                         }
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Creating new channel with ID {id} and name {}", data.channel_name);
                         self.channels.insert(id, data.channel_name.clone());
                         self.channel_info.insert(id, (true, HashSet::new()));
                         // This is safe, since we just inserted the channel
                         channelinfo = self.channel_info.get_mut(&id).unwrap();
                         channel_id = id;
+                        replies.push((
+                            cli_node_id,
+                            ChatMessage{
+                                own_id: self.own_id.into(),
+                                message_kind: Some(MessageKind::SrvChannelCreationSuccessful(channel_id))
+                            }
+                            ));
                     } else {
                         replies.push((
                             cli_node_id,
