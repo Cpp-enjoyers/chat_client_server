@@ -267,6 +267,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                 }
             }
         }
+        info!(target: format!("Server {}", self.own_id).as_str(), "Sending back replies: {replies:?}");
         (replies, vec![])
     }
 
