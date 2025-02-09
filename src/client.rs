@@ -392,7 +392,9 @@ impl ChatClientInternal {
             "unregister" => {
                 if let Some(server_id) = self.currently_connected_server {
                     match self.server_usernames.get(&server_id) {
-                        Some(_) => (
+                        Some(_) => {
+                            self.server_usernames.remove(&server_id);
+                            (
                             vec![(
                                 server_id,
                                 ChatMessage {
@@ -403,7 +405,8 @@ impl ChatClientInternal {
                             vec![ChatClientEvent::MessageReceived(
                                 "[SYSTEM] Removing registration...".to_string(),
                             )],
-                        ),
+                        )
+                        },
                         None => (
                             vec![],
                             vec![ChatClientEvent::MessageReceived(
