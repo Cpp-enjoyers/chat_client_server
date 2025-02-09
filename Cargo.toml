@@ -8,4 +8,8 @@ common = { git = "https://github.com/Cpp-enjoyers/common"}
 chat_common = { git = "https://github.com/Cpp-enjoyers/chat_common"}
 wg_2024 = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = ["serialize", "debug"] }
 crossbeam = "0.8"
-itertools = "0.13"
+itertools = "0.14"
+bimap = "0.6"
+rand = "0.9"
+map-macro = "0.3"
+chrono = "0.4"
