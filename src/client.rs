@@ -9,6 +9,7 @@ use log::{info, trace};
 use wg_2024::network::NodeId;
 use wg_2024::packet::{NodeType, Packet};
 
+#[derive(Debug)]
 pub struct ChatClientInternal {
     discovered_servers: Vec<(NodeId, String)>,
     discovered_nodes: HashSet<NodeId>,
@@ -456,7 +457,6 @@ impl ChatClientInternal {
                 }
             }
             "join" => {
-                self.currently_connected_channel = None;
                 if arg.contains('#') || arg.contains('@') || arg.contains(' ') {
                     (
                         vec![],
@@ -512,7 +512,9 @@ impl ChatClientInternal {
                     self.currently_connected_channel,
                 ) {
                     (Some(server_id), Some(_)) =>
-                        (
+                        {
+                            self.currently_connected_channel = None;
+                            (
                             vec![(server_id, ChatMessage{
                                 own_id: self.own_id.into(),
                                 message_kind: Some(MessageKind::CliLeave(Empty {})
@@ -521,7 +523,7 @@ impl ChatClientInternal {
                             vec![ChatClientEvent::MessageReceived(
                                 "[SYSTEM] Leaving channel...".to_string(),
                             )],
-                        ),
+                        )},
                     (Some(_), None) => (
                             vec![],
                             vec![ChatClientEvent::MessageReceived(
@@ -587,6 +589,10 @@ impl ChatClientInternal {
                     )],
                     )
                 }
+            }
+            "state" => {
+                info!(target: format!("Client {}", self.own_id).as_str(), "State: {:?}", self);
+                (vec![], vec![])
             }
             _ => (
                 vec![],

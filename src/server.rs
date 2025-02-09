@@ -14,6 +14,7 @@ use map_macro::hash_map;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{NodeType, Packet};
 
+#[derive(Debug)]
 pub struct ChatServerInternal {
     own_id: NodeId,
     channels: BiHashMap<u64, String>,
@@ -35,7 +36,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
     {
         let mut replies: Vec<(NodeId, ChatMessage)> = vec![];
         let cli_node_id = message.own_id as NodeId;
-        // TODO
+        info!(target: format!("Server {}", self.own_id).as_str(), "Current state: {self:?}");
         info!(target: format!("Server {}", self.own_id).as_str(), "Received message: {message:?}");
         if let Some(kind) = message.message_kind {
             match kind {
@@ -88,7 +89,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 )),
                             },
                         ));
-                        info!(target: format!("Server {}", self.own_id).as_str(), "Sending channel updates");
+                        self.usernames.insert(cli_node_id, req.clone());
                         self.channel_info
                             .get_mut(&0x1)
                             .map(|(_, clients)| clients.insert(cli_node_id));
@@ -98,6 +99,8 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             u64::from(cli_node_id) << 32 | 0x8,
                             (false, map_macro::hash_set! {cli_node_id}),
                         );
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Sending channel updates");
+                        replies.extend_from_slice(self.generate_channel_updates().as_slice());
                     }
                 }
                 MessageKind::CliCancelReg(..) => {
@@ -156,6 +159,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             }
                             ));
                     } else {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Invalid channel join request from client {cli_node_id}");
                         replies.push((
                             cli_node_id,
                             ChatMessage {
@@ -166,9 +170,11 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 })),
                             },
                         ));
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Current state: {self:?}");
                         return (replies, vec![]);
                     }
                     if channelinfo.1.contains(&cli_node_id) {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Client {cli_node_id} is already in channel {channel_id}");
                         replies.push((
                             cli_node_id,
                             ChatMessage {
@@ -180,6 +186,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             },
                         ));
                     } else {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Client {cli_node_id} is joining channel {channel_id}");
                         channelinfo.1.insert(cli_node_id);
                         replies.push((
                             cli_node_id,
@@ -194,18 +201,22 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                     }
                 }
                 MessageKind::CliLeave(..) => {
-                    for val in self.channel_info.values_mut().filter(|x| x.0) {
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Received leave request from client {cli_node_id}");
+                    for val in self.channel_info.values_mut().filter(|x| x.0 == true) {
                         val.1.remove(&cli_node_id);
                     }
                     replies.extend_from_slice(self.generate_channel_updates().as_slice());
                 }
                 MessageKind::SendMsg(msg) => {
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Received message: {msg:?}");
                     match (
                         self.channel_info.get(&msg.channel_id),
                         self.usernames.get_by_left(&cli_node_id),
                     ) {
                         (Some(channel_data), Some(username)) => {
+                            info!(target: format!("Server {}", self.own_id).as_str(), "Forwarding message sent by {username}");
                             for id in &channel_data.1 {
+                                info!(target: format!("Server {}", self.own_id).as_str(), "Forwarding message to client {id}");
                                 replies.push((
                                     *id,
                                     ChatMessage {
@@ -224,6 +235,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             }
                         }
                         (None, Some(_)) => {
+                            info!(target: format!("Server {}", self.own_id).as_str(), "Client {cli_node_id} is not registered");
                             replies.push((
                                 cli_node_id,
                                 ChatMessage {
@@ -237,6 +249,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             ));
                         }
                         (_, None) => {
+                            info!(target: format!("Server {}", self.own_id).as_str(), "Channel doesn't exist");
                             replies.push((
                                 cli_node_id,
                                 ChatMessage {
@@ -282,6 +295,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                 }
             }
         }
+        info!(target: format!("Server {}", self.own_id).as_str(), "Current state: {self:?}");
         info!(target: format!("Server {}", self.own_id).as_str(), "Sending back replies: {replies:?}");
         (replies, vec![])
     }
