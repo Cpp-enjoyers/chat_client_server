@@ -5,6 +5,7 @@ use common::slc_commands::{ChatClientCommand, ChatClientEvent, ServerType};
 use crossbeam::channel::Sender;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
+use log::info;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{NodeType, Packet};
 
@@ -35,6 +36,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
     {
         let mut replies: Vec<(NodeId, ChatMessage)> = vec![];
         let mut events: Vec<ChatClientEvent> = vec![];
+        info!(target: format!("Node {}", self.own_id).as_str(), "Received message: {:?}", message);
         if let Some(kind) = message.message_kind {
             match kind {
                 MessageKind::SrvConfirmReg(reg) => {
@@ -191,7 +193,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
             Some((
                 id,
                 ChatMessage {
-                    own_id:  u32::from(self.own_id),
+                    own_id: u32::from(self.own_id),
                     message_kind: Some(MessageKind::DsvReq("chat".to_string())),
                 },
             ))
@@ -220,6 +222,7 @@ impl ChatClientInternal {
         &mut self,
         message: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
+        info!(target: format!("Node {}", self.own_id).as_str(), "Handling text message: {:?}", message);
         if message.starts_with('/') {
             let (cmd, remainder) = message.split_once(' ').unwrap_or(("", ""));
             let (arg, freeform) = remainder.split_once(' ').unwrap_or(("", ""));
@@ -276,7 +279,7 @@ impl ChatClientInternal {
         arg: &str,
         freeform: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
-        // TODO: Implement commands
+        info!(target: format!("Node {}", self.own_id).as_str(), "Handling text command: /{} - {} - {}", command, arg, freeform);
         match command {
             "help" => (
                 vec![],
@@ -291,7 +294,9 @@ impl ChatClientInternal {
                     .join(", ");
                 (
                     vec![],
-                    vec![ChatClientEvent::MessageReceived(format!("[SYSTEM] Available servers: {servers_list}"))],
+                    vec![ChatClientEvent::MessageReceived(format!(
+                        "[SYSTEM] Available servers: {servers_list}"
+                    ))],
                 )
             }
             "connect" => {
@@ -355,7 +360,8 @@ impl ChatClientInternal {
                                 },
                             )],
                             vec![ChatClientEvent::MessageReceived(format!(
-                                "[SYSTEM] Registering with username {arg}"))],
+                                "[SYSTEM] Registering with username {arg}"
+                            ))],
                         ),
                     }
                 } else {

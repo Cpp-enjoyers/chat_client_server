@@ -82,7 +82,8 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         self.channel_info
                             .get_mut(&0x1)
                             .map(|(_, clients)| clients.insert(cli_node_id));
-                        self.channels.insert(u64::from(cli_node_id) << 32 | 0x8, req);
+                        self.channels
+                            .insert(u64::from(cli_node_id) << 32 | 0x8, req);
                         self.channel_info.insert(
                             u64::from(cli_node_id) << 32 | 0x8,
                             (false, map_macro::hash_set! {cli_node_id}),
@@ -201,27 +202,29 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         }
                         (None, Some(_)) => {
                             replies.push((
-                            cli_node_id,
-                            ChatMessage {
-                                own_id: self.own_id.into(),
-                                message_kind: Some(MessageKind::Err(ErrorMessage {
-                                    error_type: "NOT_REGISTERED".to_string(),
-                                    error_message: "Can't send message, you're not registered".to_string(),
-                                })),
-                            },
-                        ));
+                                cli_node_id,
+                                ChatMessage {
+                                    own_id: self.own_id.into(),
+                                    message_kind: Some(MessageKind::Err(ErrorMessage {
+                                        error_type: "NOT_REGISTERED".to_string(),
+                                        error_message: "Can't send message, you're not registered"
+                                            .to_string(),
+                                    })),
+                                },
+                            ));
                         }
                         (_, None) => {
                             replies.push((
-                            cli_node_id,
-                            ChatMessage {
-                                own_id: self.own_id.into(),
-                                message_kind: Some(MessageKind::Err(ErrorMessage {
-                                    error_type: "CHANNEL_NOT_EXISTS".to_string(),
-                                    error_message: "Can't send message, channel doesn't exist".to_string(),
-                                })),
-                            },
-                        ));
+                                cli_node_id,
+                                ChatMessage {
+                                    own_id: self.own_id.into(),
+                                    message_kind: Some(MessageKind::Err(ErrorMessage {
+                                        error_type: "CHANNEL_NOT_EXISTS".to_string(),
+                                        error_message: "Can't send message, channel doesn't exist"
+                                            .to_string(),
+                                    })),
+                                },
+                            ));
                         }
                     }
                 }
