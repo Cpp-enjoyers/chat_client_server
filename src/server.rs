@@ -9,7 +9,8 @@ use common::slc_commands::{ServerCommand, ServerEvent};
 use crossbeam::channel::Sender;
 use rand::{rng, RngCore};
 use std::collections::{HashMap, HashSet};
-use log::{error, info};
+use log::{debug, error, info};
+use map_macro::hash_map;
 use wg_2024::network::NodeId;
 use wg_2024::packet::{NodeType, Packet};
 
@@ -39,7 +40,9 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
         if let Some(kind) = message.message_kind {
             match kind {
                 MessageKind::CliRegisterRequest(req) => {
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Received register request: {req:?}");
                     if self.usernames.contains_left(&cli_node_id) {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Client {cli_node_id} already registered");
                         replies.push((
                             cli_node_id,
                             ChatMessage {
@@ -54,6 +57,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             },
                         ));
                     } else if self.usernames.contains_right(&req) {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Username {req} already exists");
                         replies.push((
                             cli_node_id,
                             ChatMessage {
@@ -68,6 +72,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                             },
                         ));
                     } else {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Registering client {cli_node_id} with username {req}");
                         replies.push((
                             cli_node_id,
                             ChatMessage {
@@ -81,6 +86,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 )),
                             },
                         ));
+                        debug!(target: format!("Server {}", self.own_id).as_str(), "Sending channel updates");
                         self.channel_info
                             .get_mut(&0x1)
                             .map(|(_, clients)| clients.insert(cli_node_id));
@@ -232,7 +238,6 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                 }
                 MessageKind::Err(e) => {
                     error!(target: format!("Server {}", self.own_id).as_str(), "Received error message: {e:?}");
-                    // TODO: Log error message
                 }
                 MessageKind::DsvReq(..) => {
                     // TODO: Change DiscoveryResponse so it doesn't need server_id, since it's already in own_id
@@ -280,6 +285,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
     where
         Self: Sized,
     {
+        info!(target: format!("Server {}", self.own_id).as_str(), "Received controller command: {command:?}");
         match command {
             ServerCommand::AddSender(id, sender) => {
                 sender_hash.insert(id, sender);
@@ -301,12 +307,10 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
     where
         Self: Sized,
     {
-        ChatServerInternal {
-            own_id: id,
-            channels: BiHashMap::default(),
-            channel_info: HashMap::default(),
-            usernames: BiHashMap::default(),
-        }
+        let mut channels = BiHashMap::default();
+        channels.insert(0x1, "All".to_string());
+        let channel_info = hash_map! {0x1 => (true, HashSet::new())};
+        ChatServerInternal { own_id: id, channels, channel_info, usernames: BiHashMap::default() }
     }
 }
 
