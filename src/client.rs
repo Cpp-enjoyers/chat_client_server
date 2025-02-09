@@ -36,7 +36,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
     {
         let mut replies: Vec<(NodeId, ChatMessage)> = vec![];
         let mut events: Vec<ChatClientEvent> = vec![];
-        info!(target: format!("Node {}", self.own_id).as_str(), "Received message: {:?}", message);
+        info!(target: format!("Client {}", self.own_id).as_str(), "Received message: {:?}", message);
         if let Some(kind) = message.message_kind {
             match kind {
                 MessageKind::SrvConfirmReg(reg) => {
@@ -222,13 +222,13 @@ impl ChatClientInternal {
         &mut self,
         message: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
-        info!(target: format!("Node {}", self.own_id).as_str(), "Handling text message: {:?}", message);
+        info!(target: format!("Client {}", self.own_id).as_str(), "Handling text message: {:?}", message);
         if message.starts_with('/') {
             let msg = message.chars().skip(1).collect::<String>();
             let (cmd, remainder) = msg.split_once(' ').unwrap_or((msg.as_str(), ""));
-            trace!(target: format!("Node {}", self.own_id).as_str(), "First split: {cmd}, {remainder}");
+            trace!(target: format!("Client {}", self.own_id).as_str(), "First split: {cmd}, {remainder}");
             let (arg, freeform) = remainder.split_once(' ').unwrap_or((remainder, ""));
-            trace!(target: format!("Node {}", self.own_id).as_str(), "First split: {arg}, {remainder}");
+            trace!(target: format!("Client {}", self.own_id).as_str(), "First split: {arg}, {remainder}");
             return self.handle_command(cmd, arg, freeform);
         }
         match (self.currently_connected_server, self.currently_connected_channel) {
@@ -282,7 +282,7 @@ impl ChatClientInternal {
         arg: &str,
         freeform: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
-        info!(target: format!("Node {}", self.own_id).as_str(), "Handling text command: [{} - {} - {}]", command, arg, freeform);
+        info!(target: format!("Client {}", self.own_id).as_str(), "Handling text command: [{} - {} - {}]", command, arg, freeform);
         match command {
             "help" => (
                 vec![],

@@ -9,6 +9,7 @@ use common::slc_commands::{ServerCommand, ServerEvent};
 use crossbeam::channel::Sender;
 use rand::{rng, RngCore};
 use std::collections::{HashMap, HashSet};
+use log::{error, info};
 use wg_2024::network::NodeId;
 use wg_2024::packet::{NodeType, Packet};
 
@@ -34,6 +35,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
         let mut replies: Vec<(NodeId, ChatMessage)> = vec![];
         let cli_node_id = message.own_id as NodeId;
         // TODO
+        info!(target: format!("Server {}", self.own_id).as_str(), "Received message: {message:?}");
         if let Some(kind) = message.message_kind {
             match kind {
                 MessageKind::CliRegisterRequest(req) => {
@@ -228,11 +230,13 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                         }
                     }
                 }
-                MessageKind::Err(_e) => {
+                MessageKind::Err(e) => {
+                    error!(target: format!("Server {}", self.own_id).as_str(), "Received error message: {e:?}");
                     // TODO: Log error message
                 }
                 MessageKind::DsvReq(..) => {
                     // TODO: Change DiscoveryResponse so it doesn't need server_id, since it's already in own_id
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Sending back discovery response");
                     replies.push((
                         message.own_id as NodeId,
                         ChatMessage {
