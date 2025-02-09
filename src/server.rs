@@ -351,6 +351,7 @@ impl ChatServerInternal {
                 },
             ));
         }
+        debug!(target: format!("Server {}", self.own_id).as_str(), "Generated channel updates: {updates:?}");
         updates
     }
 }
