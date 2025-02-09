@@ -86,7 +86,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 )),
                             },
                         ));
-                        debug!(target: format!("Server {}", self.own_id).as_str(), "Sending channel updates");
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Sending channel updates");
                         self.channel_info
                             .get_mut(&0x1)
                             .map(|(_, clients)| clients.insert(cli_node_id));
@@ -351,7 +351,7 @@ impl ChatServerInternal {
                 },
             ));
         }
-        debug!(target: format!("Server {}", self.own_id).as_str(), "Generated channel updates: {updates:?}");
+        info!(target: format!("Server {}", self.own_id).as_str(), "Generated channel updates: {updates:?}");
         updates
     }
 }
