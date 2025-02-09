@@ -325,14 +325,19 @@ impl ChatServerInternal {
         let mut updates = vec![];
         let mut channel_list = vec![];
         for (id, name) in &self.channels {
+            info!(target: format!("Server {}", self.own_id).as_str(), "Adding {name}({id}) to channel list for generation");
             if let Some((is_group, clients)) = self.channel_info.get(id) {
                 let mut clients_res = vec![];
                 for x in clients {
+                    info!(target: format!("Server {}", self.own_id).as_str(), "Adding client {x} to channel members for generation:");
                     if let Some(name) = self.usernames.get_by_left(x) {
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Client {x} has username {name}");
                         clients_res.push(ClientData {
                             username: name.clone(),
                             id: u64::from(*x),
                         });
+                    } else {
+                        error!(target: format!("Server {}", self.own_id).as_str(), "Client {x} doesn't have a username");
                     }
                 }
                 channel_list.push(Channel {
@@ -341,9 +346,13 @@ impl ChatServerInternal {
                     channel_is_group: *is_group,
                     connected_clients: clients_res,
                 });
+            } else {
+                error!(target: format!("Server {}", self.own_id).as_str(), "Channel {name}({id}) doesn't have info");
             }
         }
+        info!(target: format!("Server {}", self.own_id).as_str(), "Generated channel list: {channel_list:?}");
         for id in self.usernames.left_values() {
+            info!(target: format!("Server {}", self.own_id).as_str(), "Adding client {id} to channel updates");
             updates.push((
                 *id,
                 ChatMessage {
