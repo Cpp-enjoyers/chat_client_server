@@ -56,6 +56,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 )),
                             },
                         ));
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Sending back replies: {replies:?}");
                     } else if self.usernames.contains_right(&req) {
                         info!(target: format!("Server {}", self.own_id).as_str(), "Username {req} already exists");
                         replies.push((
@@ -71,6 +72,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 )),
                             },
                         ));
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Sending back replies: {replies:?}");
                     } else {
                         info!(target: format!("Server {}", self.own_id).as_str(), "Registering client {cli_node_id} with username {req}");
                         replies.push((
@@ -86,6 +88,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
                                 )),
                             },
                         ));
+                        info!(target: format!("Server {}", self.own_id).as_str(), "Sending back replies: {replies:?}");
                         info!(target: format!("Server {}", self.own_id).as_str(), "Sending channel updates");
                         self.channel_info
                             .get_mut(&0x1)
