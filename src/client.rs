@@ -362,7 +362,15 @@ impl ChatClientInternal {
                                         arg.to_string(),
                                     )),
                                 },
-                            )],
+                            ),
+                            (
+                                server_id,
+                                ChatMessage {
+                                    own_id: u32::from(self.own_id),
+                                    message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
+                                },
+                            )
+                            ],
                             vec![ChatClientEvent::MessageReceived(format!(
                                 "[SYSTEM] Registering with username {arg}"
                             ))],
@@ -409,7 +417,7 @@ impl ChatClientInternal {
                 }
             }
             "channels" => {
-                if self.currently_connected_server.is_some() {
+                if let Some(server_id) = self.currently_connected_server {
                     let chan_list = self
                         .channels_list
                         .iter()
@@ -429,7 +437,15 @@ impl ChatClientInternal {
                     let msg = format!(
                         "[SYSTEM] Available channels: {chan_list}\n[SYSTEM] Available IMs: {user_list}"
                     );
-                    (vec![], vec![ChatClientEvent::MessageReceived(msg)])
+                    (vec![
+                        (
+                                server_id,
+                                ChatMessage {
+                                    own_id: u32::from(self.own_id),
+                                    message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
+                                },
+                            )
+                    ], vec![ChatClientEvent::MessageReceived(msg)])
                 } else {
                     (
                         vec![],
