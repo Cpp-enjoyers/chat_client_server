@@ -6,8 +6,8 @@ use itertools::Itertools;
 use log::info;
 use wg_2024::network::NodeId;
 
-const SERVER_NOT_FOUND: &'static str = "[SYSTEM] Error: Server not found";
-const HELP_MESSAGE: &'static str = r"
+const SERVER_NOT_FOUND: &str = "[SYSTEM] Error: Server not found";
+const HELP_MESSAGE: &str = r"
 [SYSTEM] Commands:
 [SYSTEM]    /help - Display this message
 [SYSTEM]    /servers - Lists discovered servers
@@ -19,21 +19,21 @@ const HELP_MESSAGE: &'static str = r"
 [SYSTEM]    /leave <channel> - Leave the current channel. You will still receive DMs and system communications.
 [SYSTEM]    /msg <user> <text> - Send a direct message to a user.
 ";
-const NOT_CONNECTED_TO_SERVER: &'static str = "[SYSTEM] Error: Not connected to a server. Use /servers to find servers and /connect <server_id> to connect to a server before registering.";
-const USERNAME_DISALLOWED_CHARS: &'static str =
+const NOT_CONNECTED_TO_SERVER: &str = "[SYSTEM] Error: Not connected to a server. Use /servers to find servers and /connect <server_id> to connect to a server before registering.";
+const USERNAME_DISALLOWED_CHARS: &str =
     "[SYSTEM] Error: Username cannot contain spaces, '#' or '@'";
-const USER_NOT_FOUND: &'static str = "[SYSTEM] Error: User not found";
-const NO_ALL_CHAN: &'static str = "[SYSTEM] Error: No 'all' channel found";
-const PLEASE_REGISTER: &'static str =
+const USER_NOT_FOUND: &str = "[SYSTEM] Error: User not found";
+const NO_ALL_CHAN: &str = "[SYSTEM] Error: No 'all' channel found";
+const PLEASE_REGISTER: &str =
     "[SYSTEM] Please set your username with /register <username> and try /msg-ing again.";
-const LEAVING_CHAN: &'static str = "[SYSTEM] Leaving channel...";
-const NO_CHAN_CONNECTION: &'static str = "[SYSTEM] Error: You are not connected to a channel.";
-const CHANNEL_DISALLOWED_CHARS: &'static str =
+const LEAVING_CHAN: &str = "[SYSTEM] Leaving channel...";
+const NO_CHAN_CONNECTION: &str = "[SYSTEM] Error: You are not connected to a channel.";
+const CHANNEL_DISALLOWED_CHARS: &str =
     "[SYSTEM] Error: Channel name cannot contain spaces, '#' or '@'";
-const JOINING_CHAN: &'static str = "[SYSTEM] Joining channel...";
-const CREATING_CHAN: &'static str = "[SYSTEM] Creating channel...";
-const UNREGISTERING: &'static str = "[SYSTEM] Removing registration...";
-const NOT_REGISTERED_ERR: &'static str = "[SYSTEM] Not registered to this server!";
+const JOINING_CHAN: &str = "[SYSTEM] Joining channel...";
+const CREATING_CHAN: &str = "[SYSTEM] Creating channel...";
+const UNREGISTERING: &str = "[SYSTEM] Removing registration...";
+const NOT_REGISTERED_ERR: &str = "[SYSTEM] Not registered to this server!";
 
 impl ChatClientInternal {
     pub(crate) fn handle_command(

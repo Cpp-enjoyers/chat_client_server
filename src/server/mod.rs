@@ -3,8 +3,7 @@ mod server_message_handling;
 use bimap::BiHashMap;
 use chat_common::messages::chat_message::MessageKind;
 use chat_common::messages::{
-    Channel, ChannelsList, ChatMessage, ClientData, DiscoveryResponse,
-    ErrorMessage,
+    Channel, ChannelsList, ChatMessage, ClientData, DiscoveryResponse, ErrorMessage,
 };
 use chat_common::packet_handling::{CommandHandler, PacketHandler};
 use common::slc_commands::{ServerCommand, ServerEvent};
@@ -26,7 +25,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
     fn get_node_type() -> NodeType {
         NodeType::Server
     }
-
+    #[allow(clippy::cast_possible_truncation)]
     fn handle_protocol_message(
         &mut self,
         message: ChatMessage,
@@ -35,24 +34,25 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
         Self: Sized,
     {
         let mut replies: Vec<(NodeId, ChatMessage)> = vec![];
+        #[allow(clippy::cast_possible_truncation)]
         let cli_node_id = message.own_id as NodeId;
         trace!(target: format!("Server {}", self.own_id).as_str(), "Current state: {self:?}");
         info!(target: format!("Server {}", self.own_id).as_str(), "Received message: {message:?}");
         if let Some(kind) = message.message_kind {
             match kind {
                 MessageKind::CliRegisterRequest(req) => {
-                    self.msg_cliregisterrequest(&mut replies, &cli_node_id, req)
+                    self.msg_cliregisterrequest(&mut replies, cli_node_id, req);
                 }
-                MessageKind::CliCancelReg(..) => self.msg_clicancelreq(&mut replies, &cli_node_id),
+                MessageKind::CliCancelReg(..) => self.msg_clicancelreq(&mut replies, cli_node_id),
                 MessageKind::CliRequestChannels(..) => {
                     info!(target: format!("Server {}", self.own_id).as_str(), "Received channel request");
                     replies.extend_from_slice(self.generate_channel_updates().as_slice());
                 }
-                MessageKind::CliJoin(data) => self.msg_clijoin(&mut replies, data, &cli_node_id),
-                MessageKind::CliLeave(..) => self.msg_clileave(&mut replies, &cli_node_id),
-                MessageKind::SendMsg(msg) => self.msg_sendmsg(&mut replies, &cli_node_id, msg),
+                MessageKind::CliJoin(data) => self.msg_clijoin(&mut replies, &data, cli_node_id),
+                MessageKind::CliLeave(..) => self.msg_clileave(&mut replies, cli_node_id),
+                MessageKind::SendMsg(msg) => self.msg_sendmsg(&mut replies, cli_node_id, &msg),
                 MessageKind::Err(e) => {
-                    error!(target: format!("Server {}", self.own_id).as_str(), "Received error message: {e:?}")
+                    error!(target: format!("Server {}", self.own_id).as_str(), "Received error message: {e:?}");
                 }
                 MessageKind::DsvReq(..) => {
                     info!(target: format!("Server {}", self.own_id).as_str(), "Sending back discovery response");
@@ -135,6 +135,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub type ChatServer = PacketHandler<ServerCommand, ServerEvent, ChatServerInternal>;
 
 impl ChatServerInternal {

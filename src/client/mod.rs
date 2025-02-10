@@ -76,7 +76,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
                     }
                 },
                 MessageKind::SrvDistributeMessage(msg) => {
-                    self.msg_srvdistributemessage(&mut events, msg);
+                    self.msg_srvdistributemessage(&mut events, &msg);
                 }
                 MessageKind::Err(err) => {
                     events.push(ChatClientEvent::MessageReceived(format!(
@@ -188,7 +188,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
 }
 
 impl ChatClientInternal {
-    fn msg_srvdistributemessage(&mut self, events: &mut Vec<ChatClientEvent>, msg: MessageData) {
+    fn msg_srvdistributemessage(&mut self, events: &mut Vec<ChatClientEvent>, msg: &MessageData) {
         if msg.channel_id == self.own_channel_id
             && self.currently_connected_channel == Some(self.own_channel_id)
         {
@@ -225,5 +225,5 @@ impl ChatClientInternal {
         }
     }
 }
-
+#[allow(clippy::module_name_repetitions)]
 pub type ChatClient = PacketHandler<ChatClientCommand, ChatClientEvent, ChatClientInternal>;
