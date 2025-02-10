@@ -1,8 +1,7 @@
 use crate::client::ChatClientInternal;
 use chat_common::messages::chat_message::MessageKind;
-use chat_common::messages::{ChatMessage, Empty, JoinChannel};
+use chat_common::messages::ChatMessage;
 use common::slc_commands::ChatClientEvent;
-use itertools::Itertools;
 use log::info;
 use wg_2024::network::NodeId;
 

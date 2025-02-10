@@ -2,7 +2,7 @@ mod client_command_handling;
 mod client_message_handling;
 
 use chat_common::messages::chat_message::MessageKind;
-use chat_common::messages::{Channel, ChatMessage, Empty, ErrorMessage, JoinChannel, MessageData};
+use chat_common::messages::{Channel, ChatMessage, ErrorMessage, MessageData};
 use chat_common::packet_handling::{CommandHandler, PacketHandler};
 use common::slc_commands::{ChatClientCommand, ChatClientEvent, ServerType};
 use crossbeam::channel::Sender;

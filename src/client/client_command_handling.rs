@@ -151,7 +151,9 @@ impl ChatClientInternal {
         if arg.contains(' ') || arg.contains('#') || arg.contains('@') {
             (
                 vec![],
-                vec![ChatClientEvent::MessageReceived(USERNAME_DISALLOWED_CHARS.to_string())],
+                vec![ChatClientEvent::MessageReceived(
+                    USERNAME_DISALLOWED_CHARS.to_string(),
+                )],
             )
         } else {
             match self.server_usernames.get(&server_id) {
