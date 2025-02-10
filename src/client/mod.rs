@@ -53,13 +53,13 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
                         (Some(_), false) => {
                             events.push(ChatClientEvent::MessageReceived(format!(
                                 "[SYSTEM] Error: Registration failed - {}",
-                                reg.error.unwrap_or("Unknown error".to_string())
+                                reg.error.unwrap_or_else(|| "Unknown error".to_string())
                             )));
                         }
                         (None, _) => {
                             events.push(ChatClientEvent::MessageReceived(format!(
                                 "[SYSTEM] Error: Registration failed, not connected to server - {}",
-                                reg.error.unwrap_or("Unknown error".to_string())
+                                reg.error.unwrap_or_else(|| "Unknown error".to_string())
                             )));
                         }
                     }
@@ -174,7 +174,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
     where
         Self: Sized,
     {
-        ChatClientInternal {
+        Self {
             discovered_servers: HashMap::default(),
             discovered_nodes: HashSet::default(),
             currently_connected_server: None,
@@ -188,7 +188,7 @@ impl CommandHandler<ChatClientCommand, ChatClientEvent> for ChatClientInternal {
 }
 
 impl ChatClientInternal {
-    fn msg_srvdistributemessage(&mut self, events: &mut Vec<ChatClientEvent>, msg: &MessageData) {
+    fn msg_srvdistributemessage(&self, events: &mut Vec<ChatClientEvent>, msg: &MessageData) {
         if msg.channel_id == self.own_channel_id
             && self.currently_connected_channel == Some(self.own_channel_id)
         {

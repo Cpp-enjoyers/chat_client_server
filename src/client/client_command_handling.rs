@@ -45,16 +45,19 @@ impl ChatClientInternal {
         info!(target: format!("Client {}", self.own_id).as_str(), "Handling text command: [{} - {} - {}]", command, arg, freeform);
         match command {
             "register" | "unregister" | "channels" | "join" | "leave" | "msg" => {
-                if let Some(server_id) = self.currently_connected_server {
-                    self.command_handle_with_required_server(server_id, command, arg, freeform)
-                } else {
-                    (
-                        vec![],
-                        vec![ChatClientEvent::MessageReceived(
-                            NOT_CONNECTED_TO_SERVER.to_string(),
-                        )],
-                    )
-                }
+                self.currently_connected_server.map_or_else(
+                    || {
+                        (
+                            vec![],
+                            vec![ChatClientEvent::MessageReceived(
+                                NOT_CONNECTED_TO_SERVER.to_string(),
+                            )],
+                        )
+                    },
+                    |server_id| {
+                        self.command_handle_with_required_server(server_id, command, arg, freeform)
+                    },
+                )
             }
             "help" => (
                 vec![],
@@ -128,7 +131,7 @@ impl ChatClientInternal {
         }
     }
 
-    fn cmd_servers(&mut self) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
+    fn cmd_servers(&self) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
         let servers_list = self
             .discovered_servers
             .iter()
@@ -144,7 +147,7 @@ impl ChatClientInternal {
     }
 
     fn cmd_register(
-        &mut self,
+        &self,
         server_id: NodeId,
         arg: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
@@ -156,77 +159,92 @@ impl ChatClientInternal {
                 )],
             )
         } else {
-            match self.server_usernames.get(&server_id) {
-                Some(prev) => (
-                    vec![],
-                    vec![ChatClientEvent::MessageReceived(format!(
-                        "[SYSTEM] Error: Already registered with username {prev}"
-                    ))],
-                ),
-                None => (
-                    vec![
-                        (
-                            server_id,
-                            ChatMessage {
-                                own_id: u32::from(self.own_id),
-                                message_kind: Some(MessageKind::CliRegisterRequest(
-                                    arg.to_string(),
-                                )),
-                            },
-                        ),
-                        (
-                            server_id,
-                            ChatMessage {
-                                own_id: u32::from(self.own_id),
-                                message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
-                            },
-                        ),
-                    ],
-                    vec![ChatClientEvent::MessageReceived(format!(
-                        "[SYSTEM] Registering with username {arg}"
-                    ))],
-                ),
-            }
+            self.server_usernames.get(&server_id).map_or_else(
+                || {
+                    (
+                        vec![
+                            (
+                                server_id,
+                                ChatMessage {
+                                    own_id: u32::from(self.own_id),
+                                    message_kind: Some(MessageKind::CliRegisterRequest(
+                                        arg.to_string(),
+                                    )),
+                                },
+                            ),
+                            (
+                                server_id,
+                                ChatMessage {
+                                    own_id: u32::from(self.own_id),
+                                    message_kind: Some(MessageKind::CliRequestChannels(Empty {})),
+                                },
+                            ),
+                        ],
+                        vec![ChatClientEvent::MessageReceived(format!(
+                            "[SYSTEM] Registering with username {arg}"
+                        ))],
+                    )
+                },
+                |prev| {
+                    (
+                        vec![],
+                        vec![ChatClientEvent::MessageReceived(format!(
+                            "[SYSTEM] Error: Already registered with username {prev}"
+                        ))],
+                    )
+                },
+            )
         }
     }
 
     fn cmd_msg(
-        &mut self,
+        &self,
         server_id: NodeId,
         arg: &str,
         freeform: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
         if self.server_usernames.contains_key(&server_id) {
             let all_channel = self.channels_list.iter().find(|x| x.channel_id == 0x1);
-            if let Some(all) = all_channel {
-                if let Some(dst_id) = all.connected_clients.iter().find(|x| x.username == arg) {
+            all_channel.map_or_else(
+                || {
                     (
-                        vec![(
-                            server_id,
-                            ChatMessage {
-                                own_id: u32::from(self.own_id),
-                                message_kind: Some(MessageKind::SendMsg(
-                                    chat_common::messages::SendMessage {
-                                        message: freeform.to_string(),
-                                        channel_id: dst_id.id << 32 | 0x8,
-                                    },
-                                )),
+                        vec![],
+                        vec![ChatClientEvent::MessageReceived(NO_ALL_CHAN.to_string())],
+                    )
+                },
+                |all| {
+                    all.connected_clients
+                        .iter()
+                        .find(|x| x.username == arg)
+                        .map_or_else(
+                            || {
+                                (
+                                    vec![],
+                                    vec![ChatClientEvent::MessageReceived(
+                                        USER_NOT_FOUND.to_string(),
+                                    )],
+                                )
                             },
-                        )],
-                        vec![],
-                    )
-                } else {
-                    (
-                        vec![],
-                        vec![ChatClientEvent::MessageReceived(USER_NOT_FOUND.to_string())],
-                    )
-                }
-            } else {
-                (
-                    vec![],
-                    vec![ChatClientEvent::MessageReceived(NO_ALL_CHAN.to_string())],
-                )
-            }
+                            |dst_id| {
+                                (
+                                    vec![(
+                                        server_id,
+                                        ChatMessage {
+                                            own_id: u32::from(self.own_id),
+                                            message_kind: Some(MessageKind::SendMsg(
+                                                chat_common::messages::SendMessage {
+                                                    message: freeform.to_string(),
+                                                    channel_id: dst_id.id << 32 | 0x8,
+                                                },
+                                            )),
+                                        },
+                                    )],
+                                    vec![],
+                                )
+                            },
+                        )
+                },
+            )
         } else {
             (
                 vec![],
@@ -265,7 +283,7 @@ impl ChatClientInternal {
     }
 
     fn cmd_join(
-        &mut self,
+        &self,
         server_id: NodeId,
         arg: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
@@ -277,39 +295,46 @@ impl ChatClientInternal {
                 )],
             )
         } else {
-            match self.channels_list.iter().find(|x| arg == x.channel_name) {
-                Some(channel) => (
-                    vec![(
-                        server_id,
-                        ChatMessage {
-                            own_id: u32::from(self.own_id),
-                            message_kind: Some(MessageKind::CliJoin(JoinChannel {
-                                channel_id: Some(channel.channel_id),
-                                channel_name: String::new(),
-                            })),
-                        },
-                    )],
-                    vec![ChatClientEvent::MessageReceived(JOINING_CHAN.to_string())],
-                ),
-                None => (
-                    vec![(
-                        server_id,
-                        ChatMessage {
-                            own_id: u32::from(self.own_id),
-                            message_kind: Some(MessageKind::CliJoin(JoinChannel {
-                                channel_id: None,
-                                channel_name: arg.to_string(),
-                            })),
-                        },
-                    )],
-                    vec![ChatClientEvent::MessageReceived(CREATING_CHAN.to_string())],
-                ),
-            }
+            self.channels_list
+                .iter()
+                .find(|x| arg == x.channel_name)
+                .map_or_else(
+                    || {
+                        (
+                            vec![(
+                                server_id,
+                                ChatMessage {
+                                    own_id: u32::from(self.own_id),
+                                    message_kind: Some(MessageKind::CliJoin(JoinChannel {
+                                        channel_id: None,
+                                        channel_name: arg.to_string(),
+                                    })),
+                                },
+                            )],
+                            vec![ChatClientEvent::MessageReceived(CREATING_CHAN.to_string())],
+                        )
+                    },
+                    |channel| {
+                        (
+                            vec![(
+                                server_id,
+                                ChatMessage {
+                                    own_id: u32::from(self.own_id),
+                                    message_kind: Some(MessageKind::CliJoin(JoinChannel {
+                                        channel_id: Some(channel.channel_id),
+                                        channel_name: String::new(),
+                                    })),
+                                },
+                            )],
+                            vec![ChatClientEvent::MessageReceived(JOINING_CHAN.to_string())],
+                        )
+                    },
+                )
         }
     }
 
     fn cmd_channels(
-        &mut self,
+        &self,
         server_id: NodeId,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
         let chan_list = self

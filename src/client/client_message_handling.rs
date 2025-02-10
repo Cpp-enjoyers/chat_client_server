@@ -23,7 +23,7 @@ impl ChatClientInternal {
     }
 
     fn handle_text_message(
-        &mut self,
+        &self,
         message: &str,
     ) -> (Vec<(NodeId, ChatMessage)>, Vec<ChatClientEvent>) {
         match (self.currently_connected_server, self.currently_connected_channel) {

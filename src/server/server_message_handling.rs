@@ -102,7 +102,7 @@ impl ChatServerInternal {
     }
 
     pub(crate) fn msg_sendmsg(
-        &mut self,
+        &self,
         replies: &mut Vec<(NodeId, ChatMessage)>,
         cli_node_id: NodeId,
         msg: &SendMessage,

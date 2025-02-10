@@ -126,7 +126,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
         let mut channels = BiHashMap::default();
         channels.insert(0x1, "All".to_string());
         let channel_info = hash_map! {0x1 => (true, HashSet::new())};
-        ChatServerInternal {
+        Self {
             own_id: id,
             channels,
             channel_info,
@@ -139,7 +139,7 @@ impl CommandHandler<ServerCommand, ServerEvent> for ChatServerInternal {
 pub type ChatServer = PacketHandler<ServerCommand, ServerEvent, ChatServerInternal>;
 
 impl ChatServerInternal {
-    fn generate_channel_updates(&mut self) -> Vec<(NodeId, ChatMessage)> {
+    fn generate_channel_updates(&self) -> Vec<(NodeId, ChatMessage)> {
         let mut updates = vec![];
         let mut channel_list = vec![];
         for (id, name) in &self.channels {
